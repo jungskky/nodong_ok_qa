@@ -1,0 +1,14 @@
+{
+  "fields": [
+    {
+      "numDimensions": 1024,
+      "path": "embedding_q",
+      "similarity": "cosine",
+      "type": "vector"
+    },
+    {
+      "path": "doc_level",
+      "type": "filter"
+    }
+  ]
+}
