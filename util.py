@@ -273,6 +273,7 @@ def make_prompt_of_qas_list(query, qas_list):
           Do not refer about Question and Answer sets itself including the No of Question and Answer sets.
           You must always reply in Korean.
           Your answer should be logical and make sense.
+          If There are related information (관련 정보), respond it as much as possible.
 
           <<<
         Inquiry: {query}
@@ -388,7 +389,7 @@ def querying(query, history):
     process_type = "Embedding"
     question, answer, url, score, qas_list = get_answer_by_embedding(embeddings, nodong_qa, query)
 
-    if score < 0.97:
+    if score < 0.96:
         llm_answer = get_answer_by_llm(query, qas_list)
 
     return_text_arr = []
@@ -396,7 +397,7 @@ def querying(query, history):
     return_text_arr.append(f"<h2>Process type</h2>\n{process_type}")
     return_text_arr.append(f"<h2>Question</h2>\n{question}")
     return_text_arr.append(f"<h2>Answer</h2>\n{answer}")
-    return_text_arr.append(f"<h2>Link URL</h2>\n{url}")
+    return_text_arr.append(f"<h2>Link URL</h2>\n<a href='{url}'>{url}</a>")
     if process_type == "Embedding":
         return_text_arr.append(f"<h2>Score</h2>\n{score}")
     if len(llm_answer) > 0:
