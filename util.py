@@ -356,8 +356,10 @@ def get_sorted_qas_list(query, child_qas_list):
 
     print("-----------------------------")
     queries_array = []
+    queries_eval_array = []
     for qa in child_qas_list:
         queries_array.append([query, qa["question"]])
+        queries_eval_array.append(qa["score"])
         print(qa["question"])
     print("-----------------------------")
 
@@ -365,6 +367,7 @@ def get_sorted_qas_list(query, child_qas_list):
     compute_result = compute_rerank(queries_array)
 
     # TODO : 삭제
+    print(queries_eval_array)
     print(compute_result)
 
     sorted_result = list(reversed(sorted((e, i) for i,e in enumerate(compute_result))))
