@@ -4,6 +4,7 @@ from transformers import pipeline
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from pymongo import MongoClient
 import os
+from FlagEmbedding import FlagLLMReranker
 
 
 def get_embeddings_with_model_name(model_name):
@@ -12,6 +13,7 @@ def get_embeddings_with_model_name(model_name):
 @staticmethod
 def get_embeddings():
     # model_name = "intfloat/multilingual-e5-large"
+    # model_name = "../uinetworks_faq/multilingual-e5-large"
     model_name = "/content/multilingual-e5-large"
     embeddings = get_embeddings_with_model_name(model_name)
     return embeddings
@@ -49,6 +51,26 @@ if not pipe:
     pipe = get_pipe()
 # -----------------------------------------------------------------------
 
+@staticmethod
+def get_reranker():
+    reranker = FlagLLMReranker('/content/bge-reranker-v2-gemma', use_fp16=True)
+    # reranker = FlagLLMReranker('./bge-reranker-v2-gemma', use_fp16=True)
+    return reranker
+
+
+# -----------------------------------------------------------------------
+reranker = None
+if not reranker:
+    reranker = get_reranker()
+# -----------------------------------------------------------------------
+
+"""
+    queries_array : [['오늘 점심은 뭐가 맛있을까?', '점심에는 뭐가 맛있을까?'], ['오늘 점심은 뭐가 맛있을까?', '아침 식사는 맛있었니? 222']]
+"""
+def compute_rerank(queries_array):
+    # scores = reranker.compute_score([['오늘 점심은 뭐가 맛있을까?', '점심에는 뭐가 맛있을까?'], ['오늘 점심은 뭐가 맛있을까?', '아침 식사는 맛있었니?'], ['오늘 점심은 뭐가 맛있을까?', '아침 식사는 맛있었니? 111'], ['오늘 점심은 뭐가 맛있을까?', '아침 식사는 맛있었니? 222']])
+    scores = reranker.compute_score(queries_array)
+    return scores
 
 def get_database():
     MONGO_URI = "mongodb+srv://ysjeong:jeong7066#@cluster0.jf3wpr7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -316,6 +338,44 @@ def get_answer_by_llm(query, qas_list):
 
 
 """
+    compute_result : rerank result
+    child_qas_list : embedding result
+"""
+def get_sorted_qas_list(query, child_qas_list):
+
+    # 중복제거
+    q_list = []
+    qa_temp = []
+    for qas in child_qas_list:
+        if qas["question"] in qa_temp:
+            continue
+        qa_temp.append(qas["question"])
+        q_list.append(qas)
+
+    child_qas_list = q_list
+
+    print("-----------------------------")
+    queries_array = []
+    for qa in child_qas_list:
+        queries_array.append([query, qa["question"]])
+        print(qa["question"])
+    print("-----------------------------")
+
+    # Rerank child qas list
+    compute_result = compute_rerank(queries_array)
+
+    # TODO : 삭제
+    print(compute_result)
+
+    sorted_result = list(reversed(sorted((e, i) for i,e in enumerate(compute_result))))
+    r_qas_list = []
+    for cr in sorted_result:
+        r_qas_list.append(child_qas_list[cr[1]])
+
+    return r_qas_list
+
+
+"""
   get_answer_by_embedding
 """
 def get_answer_by_embedding(embeddings, faq_qa, query):
@@ -329,8 +389,8 @@ def get_answer_by_embedding(embeddings, faq_qa, query):
                 "index": "vector_index",
                 "path": "embedding_q",
                 "queryVector": query_embedding,
-                "numCandidates": 3,
-                "limit": 3
+                "numCandidates": 10,
+                "limit": 10
             }
         },
         {
@@ -345,6 +405,12 @@ def get_answer_by_embedding(embeddings, faq_qa, query):
     ])
 
     child_qas_list = list(child_qas)
+
+    # compute 결과와 child_qas_list 결과를 조합하여 qas list 구성
+    child_qas_list = get_sorted_qas_list(query, child_qas_list)
+    if len(child_qas_list) > 3:
+        child_qas_list = child_qas_list[:3]
+    print("The length of child_qas_list:{}".format(len(child_qas_list)))
 
     answer = ""
     if len(child_qas_list) > 0:
@@ -389,7 +455,7 @@ def querying(query, history):
     process_type = "Embedding"
     question, answer, url, score, qas_list = get_answer_by_embedding(embeddings, nodong_qa, query)
 
-    if score < 0.96:
+    if score < 0.97:
         llm_answer = get_answer_by_llm(query, qas_list)
 
     return_text_arr = []
@@ -405,3 +471,6 @@ def querying(query, history):
     return_text = "".join(return_text_arr)
 
     return return_text
+
+query = "취업규칙이 변경되면 기존 근로계약과의 우선순위는 어떻게 달라지게 되나요?"
+querying(query, None)
