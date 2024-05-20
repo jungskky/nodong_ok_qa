@@ -1,0 +1,31 @@
+
+
+
+
+https://supabase.com/dashboard/project/tzrmvvyfjgksfdzbnabj/database/extensions
+database
+ - nodong / jeongyoonsik
+
+
+
+# 테스트 prompt
+밤샘근무 다음날 대체휴무로 쉬게 되면 급여는 어떻게 되나요?
+
+
+# clone rerank model
+git clone https://huggingface.co/BAAI/bge-reranker-v2-gemma
+
+# 실행순서
+01. web_crawling_sample_v2_for_title_link.py
+01. web_crawling_sample_v2_for_title_link_best_qa.py
+01. web_crawling_sample_v2_for_title_link_sector.py
+01. web_crawling_sample_v2_for_title_link_admin_examples.py
+01. web_crawling_sample_v2_for_title_link_nodong_examples.py
+02. web_crawling_sample_v2.py
+02. web_crawling_sample_v2_best_qa.py
+02. web_crawling_sample_v2_sector.py
+02. web_crawling_sample_v2_admin_examples.py
+02. web_crawling_sample_v2_nodong_examples.py
+03. create_mongodb_database_by_json.py
+
+
