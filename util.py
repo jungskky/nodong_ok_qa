@@ -372,10 +372,36 @@ def get_sorted_qas_list(query, child_qas_list):
 
     sorted_result = list(reversed(sorted((e, i) for i,e in enumerate(compute_result))))
     r_qas_list = []
-    for cr in sorted_result:
+    t_cnt1 = 0
+    t_cnt2 = 0
+    t_cnt3 = 0
+    for idx, cr in enumerate(sorted_result):
+        if idx == 0:
+            t_cnt1 = len(child_qas_list[cr[1]]["answer"])
+        if idx == 1:
+            t_cnt2 = len(child_qas_list[cr[1]]["answer"])
+        if idx == 2:
+            t_cnt3 = len(child_qas_list[cr[1]]["answer"])
         r_qas_list.append(child_qas_list[cr[1]])
 
-    return r_qas_list
+    return r_qas_list, t_cnt1, t_cnt2, t_cnt3
+
+
+"""
+    get query_member_cnt
+    : query_member_cnt 를 return 한다.
+"""
+def get_query_member_cnt(default_member_cnt, t_cnt1, t_cnt2, t_cnt3):
+    # content 길이에 따라 query_member_cnt 을 조정한다.
+    t_cnt = t_cnt1 + t_cnt2 + t_cnt3
+
+    query_member_cnt = default_member_cnt
+    if t_cnt > 6000:
+        query_member_cnt = 2
+    if (t_cnt1 + t_cnt2) > 6000:
+        query_member_cnt = 1
+
+    return query_member_cnt
 
 
 """
@@ -410,9 +436,13 @@ def get_answer_by_embedding(embeddings, faq_qa, query):
     child_qas_list = list(child_qas)
 
     # compute 결과와 child_qas_list 결과를 조합하여 qas list 구성
-    child_qas_list = get_sorted_qas_list(query, child_qas_list)
-    if len(child_qas_list) > 3:
-        child_qas_list = child_qas_list[:3]
+    child_qas_list, t_cnt1, t_cnt2, t_cnt3 = get_sorted_qas_list(query, child_qas_list)
+    print("t_cnt1/t_cnt2/t_cnt3:{}/{}/{}".format(t_cnt1, t_cnt2, t_cnt3))
+
+    default_member_cnt = 3
+    query_member_cnt = get_query_member_cnt(default_member_cnt, t_cnt1, t_cnt2, t_cnt3)
+    if len(child_qas_list) > query_member_cnt:
+        child_qas_list = child_qas_list[:query_member_cnt]
     print("The length of child_qas_list:{}".format(len(child_qas_list)))
 
     answer = ""
