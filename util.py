@@ -73,31 +73,28 @@ def compute_rerank(queries_array):
     return scores
 
 def get_database():
-    MONGO_URI = "mongodb+srv://ysjeong:jeong7066#@cluster0.jf3wpr7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    # MONGO_URI = "mongodb+srv://ysjeong:jeong7066#@cluster0.jf3wpr7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    MONGO_URI = "mongodb+srv://uinetworks:LKi3dRYprU0NPACI@cluster0.9fjmpd1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
     os.environ["MONGO_URI"] = MONGO_URI
     DB_NAME = "nodong_qa"
 
     # Connect to MongoDB
     client = MongoClient(MONGO_URI)
-    db_coupang_faq = client[DB_NAME]
-    return db_coupang_faq
+    db_nodong_qa = client[DB_NAME]
+    return db_nodong_qa
 
 def get_db_table(table_name):
-    db_coupang_faq = get_database()
-    db_table = db_coupang_faq[table_name]
+    db_nodong_qa = get_database()
+    db_table = db_nodong_qa[table_name]
     return db_table
 
 def get_nodong_qa():
     COLLECTION_NAME_QA = "nodong_qa"
     return get_db_table(COLLECTION_NAME_QA)
 
-# def get_faq_doc():
-#     COLLECTION_NAME_DOC = "faq_doc"
-#     return get_db_table(COLLECTION_NAME_DOC)
-#
-# def get_faq_qa():
-#     COLLECTION_NAME_QA = "faq_qa"
-#     return get_db_table(COLLECTION_NAME_QA)
+def get_nodong_qa_content():
+    COLLECTION_NAME_QA_CONTENT = "nodong_qa_content"
+    return get_db_table(COLLECTION_NAME_QA_CONTENT)
 
 
 # -----------------------------------------------------------------------
@@ -115,151 +112,6 @@ def get_file_name(f_path):
 
     f_name = f_path.split(split_char)[-1].replace(".pdf", "").strip()
     return f_name.strip()
-
-
-"""
-  make_prompt
-"""
-def make_prompt(query, query_list_txt, inquiry_examples_txt):
-    prompt = f"""
-          You are a query maker bot. Your task is to choose only one query below
-          and choose most match query after <<< >>> into one of the following predefined query list:
-
-          ####
-          query list:
-
-{query_list_txt}
-          ####
-
-
-          If the Inquiry doesn't fit into any of the above query list, classify it as:
-          not matched
-
-          You will only respond with the predefined query list.
-          Don't provide additional explanations or text.
-          You must reply with one of the query list without any change.
-          Don't add additional comment or text.
-
-
-          ####
-          Here are some Inquiry / query examples:
-
-{inquiry_examples_txt}
-          ####
-
-          <<<
-        Inquiry: {query}
-          >>>
-
-    """
-    return prompt
-
-
-"""
-  get_category_by_query
-"""
-def get_category_by_query(embeddings, faq_doc, query):
-
-    query_embedding = embeddings.embed_documents([query.strip()])[0]
-
-    # print("query_embedding: {}".format(query_embedding))
-
-    # Retrieve relevant child documents based on query
-    child_docs = faq_doc.aggregate([{
-        "$vectorSearch": {
-            "index": "vector_index",
-            "path": "embedding",
-            "queryVector": query_embedding,
-            "numCandidates": 10,
-            "limit": 1
-        }
-    }])
-
-    child_docs_list = list(child_docs)
-    # print("The length of list [{}]".format(len(child_docs_list)))
-
-    if len(child_docs_list) > 0:
-        category = get_file_name(child_docs_list[0]["source"])
-
-    # TODO : 삭제
-    # doc_cur = faq_doc.find({"category": category}).sort({"_id": 1})
-    # strt_idx = 1
-    # for doc in doc_cur:
-    #   print_str = "[{}],[{}],[{}],[{}]".format(doc["category"],doc["page"],strt_idx, doc["content"])
-    #   print(print_str)
-    #   strt_idx += 1
-
-    return category
-
-
-"""
-  q_list, query_list_txt, inquiry_examples_txt 조회
-"""
-def get_question_list(faq_qa, category):
-    qa_cur = faq_qa.find({"category": category.strip()}).sort({"page": 1})
-    strt_idx = 1
-
-    q_list = []
-    buff_questions = ""
-    buff_examples = ""
-
-    for qa in qa_cur:
-        # TODO : 삭제
-        print_str = "[{}],[{}],[{}]".format(qa["category"],strt_idx, qa["question"])
-        # print(print_str)
-
-        q_list.append(qa["question"])
-        buff_questions += "{}.{}\n".format(strt_idx, qa["question"])
-
-        buff_examples += "Inquiry: {}\n".format(qa["question"].split("]")[-1].strip())
-        buff_examples += "query:{}\n\n".format(qa["question"])
-
-        strt_idx += 1
-
-    return q_list, buff_questions, buff_examples
-
-
-"""
-  get_question 실행
-"""
-def get_question(prompt):
-    messages = [
-        {
-            "role": "system",
-            "content": "",  # Model not yet trained for follow this
-        },
-        {"role": "user", "content": prompt},
-    ]
-    outputs = pipe(
-        messages,
-        # max_new_tokens=128,
-        max_new_tokens=256,
-        do_sample=True,
-        temperature=0.7,
-        top_k=50,
-        top_p=0.95,
-        stop_sequence="<|im_end|>",
-    )
-    print(outputs[0]["generated_text"][-1]["content"])
-    # outputs[0]
-
-    question = outputs[0]["generated_text"][-1]["content"]
-    if "[" in question:
-        question = question[question.find("["):]
-
-    return question
-
-
-"""
-  get_answer_by_question
-"""
-def get_answer_by_question(faq_qa, question):
-    qa_cur = list(faq_qa.find({"question": question}))
-    answer = ""
-    if len(qa_cur) > 0:
-        answer = qa_cur[0]["answer"]
-
-    return answer
 
 
 """
@@ -288,14 +140,14 @@ def make_prompt_of_qas_list(query, qas_list):
 {qas_text}
           ####
 
-          You must make a reply very related to Question and Answer sets.
-          You should reference Question and Answer sets to generate the reply to Inquiry.
+          You can reference Question and Answer sets to generate the reply to Inquiry.
           The reply text content should be within the Answer of Question and Answer sets.
           Do not say that you can not reply.
-          Do not refer about 'Question' and 'Answer' sets itself including the No of Question and Answer sets.
+          Do not refer about Question and Answer sets itself including the No of Question and Answer sets.
           You must always reply in Korean.
           Your answer should be logical and make sense.
           If There are related information (관련 정보), respond it as much as possible.
+          If there are href link, keep href without any changes.
 
           <<<
         Inquiry: {query}
@@ -357,6 +209,8 @@ def get_sorted_qas_list(query, child_qas_list):
     print("-----------------------------")
     queries_array = []
     queries_eval_array = []
+    print("query:{}".format(query))
+    print("--------------")
     for qa in child_qas_list:
         queries_array.append([query, qa["question"]])
         queries_eval_array.append(qa["score"])
@@ -407,12 +261,12 @@ def get_query_member_cnt(default_member_cnt, t_cnt1, t_cnt2, t_cnt3):
 """
   get_answer_by_embedding
 """
-def get_answer_by_embedding(embeddings, faq_qa, query):
+def get_answer_by_embedding(embeddings, nodong_qa, query):
 
     query_embedding = embeddings.embed_documents([query.strip()])[0]
 
     # Retrieve relevant child documents based on query
-    child_qas = faq_qa.aggregate([
+    nodong_qas = nodong_qa.aggregate([
         {
             "$vectorSearch": {
                 "index": "vector_index",
@@ -433,66 +287,114 @@ def get_answer_by_embedding(embeddings, faq_qa, query):
         }
     ])
 
-    child_qas_list = list(child_qas)
+    nodong_qas_list = list(nodong_qas)
+
+    # merge nodong qa content search result
+    nodong_qas_list += get_search_qa_by_content(query)
 
     # compute 결과와 child_qas_list 결과를 조합하여 qas list 구성
-    child_qas_list, t_cnt1, t_cnt2, t_cnt3 = get_sorted_qas_list(query, child_qas_list)
+    nodong_qas_list, t_cnt1, t_cnt2, t_cnt3 = get_sorted_qas_list(query, nodong_qas_list)
     print("t_cnt1/t_cnt2/t_cnt3:{}/{}/{}".format(t_cnt1, t_cnt2, t_cnt3))
 
-    default_member_cnt = 3
-    query_member_cnt = get_query_member_cnt(default_member_cnt, t_cnt1, t_cnt2, t_cnt3)
-    if len(child_qas_list) > query_member_cnt:
-        child_qas_list = child_qas_list[:query_member_cnt]
-    print("The length of child_qas_list:{}".format(len(child_qas_list)))
+    query_member_cnt = 3
+    query_member_cnt = get_query_member_cnt(query_member_cnt, t_cnt1, t_cnt2, t_cnt3)
+    if len(nodong_qas_list) > query_member_cnt:
+        nodong_qas_list = nodong_qas_list[:query_member_cnt]
+    print("The length of child_qas_list:{}".format(len(nodong_qas_list)))
 
     answer = ""
-    if len(child_qas_list) > 0:
-        print(child_qas_list[0]["question"])
+    if len(nodong_qas_list) > 0:
+        print(nodong_qas_list[0]["question"])
         print("========================================")
-        print(child_qas_list[0]["answer"])
+        print(nodong_qas_list[0]["answer"])
         print("========================================")
-        print(child_qas_list[0]["score"])
+        print(nodong_qas_list[0]["score"])
 
-    question = child_qas_list[0]["question"]
-    answer = child_qas_list[0]["answer"]
-    url = child_qas_list[0]["url"]
-    score = float(child_qas_list[0]["score"])
+    question = nodong_qas_list[0]["question"]
+    answer = nodong_qas_list[0]["answer"]
+    url = nodong_qas_list[0]["url"]
+    score = float(nodong_qas_list[0]["score"])
 
-    return question, answer, url, score, child_qas_list
+    return question, answer, url, score, nodong_qas_list
+
+
+def get_search_qa_by_content(query):
+    # nodong table search
+    nodong_qa = get_nodong_qa()
+    nodong_qa_content = get_nodong_qa_content()
+
+    # query embedding
+    query_embedding = embeddings.embed_documents([query.strip()])[0]
+
+    # Retrieve relevant child documents based on query
+    content_qas = nodong_qa_content.aggregate([
+        {
+            "$vectorSearch": {
+                "index": "vector_index",
+                "path": "embedding",
+                "queryVector": query_embedding,
+                "numCandidates": 10,
+                "limit": 10
+            }
+        },
+        {
+            "$project": {
+                "url": 1,
+                "content": 1,
+                "score": {"$meta": "vectorSearchScore"}
+            }
+        }
+    ])
+
+    content_qas_list = list(content_qas)
+
+    for c in content_qas_list:
+        print(c["content"])
+        print(c["url"])
+        print(c["score"])
+
+    qa_list = None
+
+    # content url 목록으로 nodong qa 조회
+    if len(content_qas_list) > 0:
+
+        # nodong qa 조회
+        qa_finds = nodong_qa.find({
+            "url": {"$in": [c["url"] for c in content_qas_list]}
+        })
+
+        qa_list = list(qa_finds)
+
+        # TODO : 확인 후 삭제
+        for idx, c in enumerate(qa_list):
+            # print(c["url"])
+            # print(c["answer"])
+            content = content_qas_list[idx]["content"]
+            c["score"] = content_qas_list[idx]["score"]
+            print(c["question"])
+            print(content)
+            print("-------------------------------------------")
+
+    return qa_list
 
 
 def querying(query, history):
 
-    # faq_doc = get_faq_doc()
-    # faq_qa = get_faq_qa()
     nodong_qa = get_nodong_qa()
-
-    # # category
-    # category = get_category_by_query(embeddings, faq_doc, query)
-    # # q_list, query_list_txt, inquiry_examples_txt
-    # q_list, query_list_txt, inquiry_examples_txt = get_question_list(faq_qa, category)
-    # # prompt
-    # prompt = make_prompt(query, query_list_txt, inquiry_examples_txt)
-    # # get_question 실행
-    # question = get_question(prompt)
 
     process_type = "LLM"
     answer = ""
     score = -1
     llm_answer = ""
-    # if question in q_list:
-    #     print("LLM 성공!")
-    #     answer = get_answer_by_question(nodong_qa, question)
-    # else:
-
     process_type = "Embedding"
+
+    # search by embedding
     question, answer, url, score, qas_list = get_answer_by_embedding(embeddings, nodong_qa, query)
 
     if score < 0.97:
         llm_answer = get_answer_by_llm(query, qas_list)
 
     return_text_arr = []
-    # return_text_arr.append(f"<h2>Category</h2>\n{category}")
     return_text_arr.append(f"<h2>Process type</h2>\n{process_type}")
     return_text_arr.append(f"<h2>Question</h2>\n{question}")
     return_text_arr.append(f"<h2>Answer</h2>\n{answer}")
@@ -505,5 +407,6 @@ def querying(query, history):
 
     return return_text
 
-query = "취업규칙이 변경되면 기존 근로계약과의 우선순위는 어떻게 달라지게 되나요?"
-querying(query, None)
+# TODO : 삭제
+# query = "취업규칙이 변경되면 기존 근로계약과의 우선순위는 어떻게 달라지게 되나요?"
+# querying(query, None)
