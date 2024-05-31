@@ -300,6 +300,13 @@ def get_answer_by_embedding(embeddings, nodong_qa, query):
     query_member_cnt = get_query_member_cnt(query_member_cnt, t_cnt1, t_cnt2, t_cnt3)
     if len(nodong_qas_list) > query_member_cnt:
         nodong_qas_list = nodong_qas_list[:query_member_cnt]
+        # TODO : 화인 후 적용
+        """
+        if query_member_cnt == 1: # 6000 byte 초과하는 경우 대응
+            if len(nodong_qas_list[0]["answer"]) > 6000:
+                nodong_qas_list[0]["answer"] = nodong_qas_list[0]["answer"][:6000]
+        """
+        
     print("The length of child_qas_list:{}".format(len(nodong_qas_list)))
 
     answer = ""
