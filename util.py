@@ -230,6 +230,7 @@ def get_sorted_qas_list(query, child_qas_list):
     t_cnt2 = 0
     t_cnt3 = 0
     for idx, cr in enumerate(sorted_result):
+        print("cr:{}".format(cr[1]))
         if idx == 0:
             t_cnt1 = len(child_qas_list[cr[1]]["answer"])
         if idx == 1:
@@ -250,9 +251,10 @@ def get_query_member_cnt(default_member_cnt, t_cnt1, t_cnt2, t_cnt3):
     t_cnt = t_cnt1 + t_cnt2 + t_cnt3
 
     query_member_cnt = default_member_cnt
-    if t_cnt > 6000:
+    t_cnt_limit = 6000
+    if t_cnt > t_cnt_limit:
         query_member_cnt = 2
-    if (t_cnt1 + t_cnt2) > 6000:
+    if (t_cnt1 + t_cnt2) > t_cnt_limit:
         query_member_cnt = 1
 
     return query_member_cnt
@@ -272,8 +274,8 @@ def get_answer_by_embedding(embeddings, nodong_qa, query):
                 "index": "vector_index",
                 "path": "embedding_q",
                 "queryVector": query_embedding,
-                "numCandidates": 10,
-                "limit": 10
+                "numCandidates": 7,
+                "limit": 7
             }
         },
         {
@@ -306,7 +308,7 @@ def get_answer_by_embedding(embeddings, nodong_qa, query):
             if len(nodong_qas_list[0]["answer"]) > 6000:
                 nodong_qas_list[0]["answer"] = nodong_qas_list[0]["answer"][:6000]
         """
-        
+
     print("The length of child_qas_list:{}".format(len(nodong_qas_list)))
 
     answer = ""
@@ -340,8 +342,8 @@ def get_search_qa_by_content(query):
                 "index": "vector_index",
                 "path": "embedding",
                 "queryVector": query_embedding,
-                "numCandidates": 10,
-                "limit": 10
+                "numCandidates": 3,
+                "limit": 3
             }
         },
         {
@@ -373,6 +375,7 @@ def get_search_qa_by_content(query):
         qa_list = list(qa_finds)
 
         # TODO : 확인 후 삭제
+        print("--------the start of get_search_qa_by_content----------")
         for idx, c in enumerate(qa_list):
             # print(c["url"])
             # print(c["answer"])
@@ -380,7 +383,8 @@ def get_search_qa_by_content(query):
             c["score"] = content_qas_list[idx]["score"]
             print(c["question"])
             print(content)
-            print("-------------------------------------------")
+            print(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,")
+        print("--------the end of get_search_qa_by_content----------")
 
     return qa_list
 
