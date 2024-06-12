@@ -274,8 +274,8 @@ def get_answer_by_embedding(embeddings, nodong_qa, query):
                 "index": "vector_index",
                 "path": "embedding_q",
                 "queryVector": query_embedding,
-                "numCandidates": 7,
-                "limit": 7
+                "numCandidates": 8,
+                "limit": 8
             }
         },
         {
@@ -342,8 +342,8 @@ def get_search_qa_by_content(query):
                 "index": "vector_index",
                 "path": "embedding",
                 "queryVector": query_embedding,
-                "numCandidates": 3,
-                "limit": 3
+                "numCandidates": 2,
+                "limit": 2
             }
         },
         {
