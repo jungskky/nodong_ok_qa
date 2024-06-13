@@ -143,6 +143,8 @@ def make_prompt_of_qas_list(query, qas_list):
           You can reference Question and Answer sets to generate the reply to Inquiry.
           The reply text content should be within the Answer of Question and Answer sets.
           Do not say that you can not reply.
+          You must not provide translation result.
+          You must provide summary of answers.
           Do not refer about Question and Answer sets itself including the No of Question and Answer sets.
           You must always reply in Korean.
           Your answer should be logical and make sense.
@@ -225,6 +227,9 @@ def get_sorted_qas_list(query, child_qas_list):
     print(compute_result)
 
     sorted_result = list(reversed(sorted((e, i) for i,e in enumerate(compute_result))))
+    print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
+    print(sorted_result)
+    print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
     r_qas_list = []
     t_cnt1 = 0
     t_cnt2 = 0
@@ -237,6 +242,7 @@ def get_sorted_qas_list(query, child_qas_list):
             t_cnt2 = len(child_qas_list[cr[1]]["answer"])
         if idx == 2:
             t_cnt3 = len(child_qas_list[cr[1]]["answer"])
+        child_qas_list[cr[1]]["rscore"] = f"{cr[0]}({cr[1]})"
         r_qas_list.append(child_qas_list[cr[1]])
 
     return r_qas_list, t_cnt1, t_cnt2, t_cnt3
@@ -298,6 +304,20 @@ def get_answer_by_embedding(embeddings, nodong_qa, query):
     nodong_qas_list, t_cnt1, t_cnt2, t_cnt3 = get_sorted_qas_list(query, nodong_qas_list)
     print("t_cnt1/t_cnt2/t_cnt3:{}/{}/{}".format(t_cnt1, t_cnt2, t_cnt3))
 
+    # ----------------------------------------
+    print("******************************************")
+    for qas in nodong_qas_list:
+        try:
+            if qas["content"]:
+                print(qas["question"])
+                print(qas["content"])
+        except Exception as e:
+            pass
+    print("******************************************")
+    # ----------------------------------------
+
+    nodong_qas_list_all = nodong_qas_list
+
     query_member_cnt = 3
     query_member_cnt = get_query_member_cnt(query_member_cnt, t_cnt1, t_cnt2, t_cnt3)
     if len(nodong_qas_list) > query_member_cnt:
@@ -324,7 +344,7 @@ def get_answer_by_embedding(embeddings, nodong_qa, query):
     url = nodong_qas_list[0]["url"]
     score = float(nodong_qas_list[0]["score"])
 
-    return question, answer, url, score, nodong_qas_list
+    return question, answer, url, score, nodong_qas_list, nodong_qas_list_all
 
 
 def get_search_qa_by_content(query):
@@ -383,6 +403,7 @@ def get_search_qa_by_content(query):
             c["score"] = content_qas_list[idx]["score"]
             print(c["question"])
             print(content)
+            c["content"] = content
             print(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,")
         print("--------the end of get_search_qa_by_content----------")
 
@@ -400,7 +421,7 @@ def querying(query, history):
     process_type = "Embedding"
 
     # search by embedding
-    question, answer, url, score, qas_list = get_answer_by_embedding(embeddings, nodong_qa, query)
+    question, answer, url, score, qas_list, qas_list_all = get_answer_by_embedding(embeddings, nodong_qa, query)
 
     if score < 0.97:
         llm_answer = get_answer_by_llm(query, qas_list)
@@ -414,6 +435,28 @@ def querying(query, history):
         return_text_arr.append(f"<h2>Score</h2>\n{score}")
     if len(llm_answer) > 0:
         return_text_arr.append(f"<h2>LLM answer</h2>\n{llm_answer}")
+
+        def get_llm_ref_text(qas_list_all):
+            llm_ref_text_arr = []
+            for idx, qas in enumerate(qas_list_all):
+                q = qas["question"]
+                a = qas["answer"]
+                s = qas["score"]
+                rs = qas["rscore"]
+                u = qas["url"]
+                content = ""
+                try:
+                    c = qas["content"]
+                    if c:
+                        content = f"\n<b>{c}</b>"
+                except Exception as e: pass
+                no = idx + 1
+                llm_ref_text_arr.append(f"{no}.<b>{q}</b>(score:{s},<b>rscore:{rs}</b>,length:{len(a)},<a href='{u}'>{u}</a>){content}\n\n")
+            llm_ref_text = "".join(llm_ref_text_arr)
+            return llm_ref_text
+
+        llm_ref_text = get_llm_ref_text(qas_list_all)
+        return_text_arr.append(f"<h2>LLM answer Reference</h2>\n{llm_ref_text}")
     return_text = "".join(return_text_arr)
 
     return return_text
