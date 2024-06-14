@@ -4,6 +4,7 @@ from transformers import pipeline
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from pymongo import MongoClient
 import os
+import time
 from FlagEmbedding import FlagLLMReranker
 
 
@@ -273,6 +274,9 @@ def get_answer_by_embedding(embeddings, nodong_qa, query):
 
     query_embedding = embeddings.embed_documents([query.strip()])[0]
 
+    # TODO : 테스트 후 삭제
+    start_time = time.time()
+
     # Retrieve relevant child documents based on query
     nodong_qas = nodong_qa.aggregate([
         {
@@ -295,14 +299,32 @@ def get_answer_by_embedding(embeddings, nodong_qa, query):
         }
     ])
 
+    # TODO : 테스트 후 삭제
+    print("******* nodong_qa.aggregate *******")
+    print("---{}s seconds---".format(time.time() - start_time))
+
     nodong_qas_list = list(nodong_qas)
+
+    # TODO : 테스트 후 삭제
+    start_time = time.time()
 
     # merge nodong qa content search result
     nodong_qas_list += get_search_qa_by_content(query)
 
+    # TODO : 테스트 후 삭제
+    print("******* ******* get_search_qa_by_content ******* *******")
+    print("---{}s seconds---".format(time.time() - start_time))
+
+    # TODO : 테스트 후 삭제
+    start_time = time.time()
+
     # compute 결과와 child_qas_list 결과를 조합하여 qas list 구성
     nodong_qas_list, t_cnt1, t_cnt2, t_cnt3 = get_sorted_qas_list(query, nodong_qas_list)
     print("t_cnt1/t_cnt2/t_cnt3:{}/{}/{}".format(t_cnt1, t_cnt2, t_cnt3))
+
+    # TODO : 테스트 후 삭제
+    print("******* ******* ******* get_sorted_qas_list ******* ******* *******")
+    print("---{}s seconds---".format(time.time() - start_time))
 
     # ----------------------------------------
     print("******************************************")
@@ -410,6 +432,32 @@ def get_search_qa_by_content(query):
     return qa_list
 
 
+"""
+    get_llm_ref_text
+    기능 : llm reference text 생성
+"""
+def get_llm_ref_text(qas_list_all):
+    llm_ref_text_arr = []
+    for idx, qas in enumerate(qas_list_all):
+        q = qas["question"]
+        a = qas["answer"]
+        s = qas["score"]
+        rs = qas["rscore"]
+        u = qas["url"]
+        content = ""
+        try:
+            c = qas["content"]
+            if c:
+                content = f"\n<b>{c}</b>"
+        except Exception as e:
+            pass
+        no = idx + 1
+        llm_ref_text_arr.append(
+            f"{no}.<b>{q}</b>(score:{s},<b>rscore:{rs}</b>,length:{len(a)},<a href='{u}'>{u}</a>){content}\n\n")
+    llm_ref_text = "".join(llm_ref_text_arr)
+    return llm_ref_text
+
+
 def querying(query, history):
 
     nodong_qa = get_nodong_qa()
@@ -423,10 +471,17 @@ def querying(query, history):
     # search by embedding
     question, answer, url, score, qas_list, qas_list_all = get_answer_by_embedding(embeddings, nodong_qa, query)
 
+    # TODO : 테스트 후 삭제
+    start_time = time.time()
+
     if score > 0.97:
         llm_answer = get_answer_by_llm(query, [qas_list[0]])
     else:
         llm_answer = get_answer_by_llm(query, qas_list)
+
+    # TODO : 테스트 후 삭제
+    print("******* ******* ******* ******* get_answer_by_llm ******* ******* ******* *******")
+    print("---{}s seconds---".format(time.time() - start_time))
 
     return_text_arr = []
     return_text_arr.append(f"<h2>Process type</h2>\n{process_type}")
@@ -437,25 +492,6 @@ def querying(query, history):
         return_text_arr.append(f"<h2>Score</h2>\n{score}")
     if len(llm_answer) > 0:
         return_text_arr.append(f"<h2>LLM answer</h2>\n{llm_answer}")
-
-        def get_llm_ref_text(qas_list_all):
-            llm_ref_text_arr = []
-            for idx, qas in enumerate(qas_list_all):
-                q = qas["question"]
-                a = qas["answer"]
-                s = qas["score"]
-                rs = qas["rscore"]
-                u = qas["url"]
-                content = ""
-                try:
-                    c = qas["content"]
-                    if c:
-                        content = f"\n<b>{c}</b>"
-                except Exception as e: pass
-                no = idx + 1
-                llm_ref_text_arr.append(f"{no}.<b>{q}</b>(score:{s},<b>rscore:{rs}</b>,length:{len(a)},<a href='{u}'>{u}</a>){content}\n\n")
-            llm_ref_text = "".join(llm_ref_text_arr)
-            return llm_ref_text
 
         llm_ref_text = get_llm_ref_text(qas_list_all)
         return_text_arr.append(f"<h2>LLM answer Reference</h2>\n{llm_ref_text}")
