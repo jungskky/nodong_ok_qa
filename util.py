@@ -423,10 +423,10 @@ def querying(query, history):
     # search by embedding
     question, answer, url, score, qas_list, qas_list_all = get_answer_by_embedding(embeddings, nodong_qa, query)
 
-    if score < 0.97:
-        llm_answer = get_answer_by_llm(query, qas_list)
-    else:
+    if score > 0.97:
         llm_answer = get_answer_by_llm(query, [qas_list[0]])
+    else:
+        llm_answer = get_answer_by_llm(query, qas_list)
 
     return_text_arr = []
     return_text_arr.append(f"<h2>Process type</h2>\n{process_type}")
