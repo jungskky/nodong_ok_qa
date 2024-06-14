@@ -425,6 +425,8 @@ def querying(query, history):
 
     if score < 0.97:
         llm_answer = get_answer_by_llm(query, qas_list)
+    else:
+        llm_answer = get_answer_by_llm(query, [qas_list[0]])
 
     return_text_arr = []
     return_text_arr.append(f"<h2>Process type</h2>\n{process_type}")
