@@ -151,6 +151,7 @@ def make_prompt_of_qas_list(query, qas_list):
           Your answer should be logical and make sense.
           If There are related information (관련 정보), respond it as much as possible.
           If there are href link, keep href without any changes.
+          The length of reply should not be over 512.
 
           <<<
         Inquiry: {query}
