@@ -118,7 +118,7 @@ def get_file_name(f_path):
 """
   make_prompt
 """
-def make_prompt_of_qas_list(query, qas_list):
+def make_prompt_of_qas_list(query, qas_list, max_new_tokens):
 
     qas_text_arr = []
     for idx, qa in enumerate(qas_list):
@@ -151,7 +151,7 @@ def make_prompt_of_qas_list(query, qas_list):
           Your answer should be logical and make sense.
           If There are related information (관련 정보), respond it as much as possible.
           If there are href link, keep href without any changes.
-          The length of reply should not be over 256.
+          The length of reply should not be over {max_new_tokens}.
 
           <<<
         Inquiry: {query}
@@ -167,7 +167,8 @@ def make_prompt_of_qas_list(query, qas_list):
   기능 : qas_list (Q/A list)를 참조하여 query에 적합한 답변을 생성한다.
 """
 def get_answer_by_llm(query, qas_list):
-    prompt = make_prompt_of_qas_list(query, qas_list)
+    max_new_tokens = 256
+    prompt = make_prompt_of_qas_list(query, qas_list, max_new_tokens)
     messages = [
         {
             "role": "system",
@@ -175,7 +176,7 @@ def get_answer_by_llm(query, qas_list):
         },
         {"role": "user", "content": prompt},
     ]
-    max_new_tokens = 1024
+    max_new_tokens = 2*max_new_tokens
     outputs = pipe(
         messages,
         # max_new_tokens=128,
